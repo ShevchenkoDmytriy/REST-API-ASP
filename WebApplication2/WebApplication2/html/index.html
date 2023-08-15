@@ -1,0 +1,182 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Список товарів</title>
+</head>
+<body>
+
+    <h2>Список товарів</h2>
+    <div>
+        <input type="hidden" id="productId" />
+        <p>
+            Назва: </br>
+            <input id="productName" />
+        </p>
+        <p>
+            Опис: </br>
+            <input id="productDescription" />
+        </p>
+        <p>
+            Ціна: </br>
+            <input id="productPrice" />
+        </p>
+        <p>
+            <button id="saveBtn">Зберегти</button>
+            <button id="resetBtn">Скинути</button>
+        </p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Назва</th>
+                <th>Опис</th>
+                <th>Ціна</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        async function getProducts() {
+            const response = await fetch("/api/products", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+
+            if (response.ok) {
+                const products = await response.json();
+                const rows = document.querySelector("tbody");
+                rows.innerHTML = "";
+
+                products.forEach(product => {
+                    rows.appendChild(createProductRow(product));
+                });
+            }
+        }
+
+        async function getProduct(id) {
+            const response = await fetch(`/api/products/${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+
+            if (response.ok) {
+                const product = await response.json();
+                document.getElementById("productId").value = product.id;
+                document.getElementById("productName").value = product.name;
+                document.getElementById("productDescription").value = product.description;
+                document.getElementById("productPrice").value = product.price;
+            }
+        }
+
+        async function createProduct(productData) {
+            const response = await fetch("/api/products", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify(productData)
+            });
+
+            if (response.ok) {
+                const product = await response.json();
+                const newRow = createProductRow(product);
+                document.querySelector("tbody").appendChild(newRow);
+            }
+        }
+
+        async function updateProduct(productData) {
+            const response = await fetch(`/api/products/${productData.id}`, {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify(productData)
+            });
+
+            if (response.ok) {
+                const updatedProduct = await response.json();
+                const existingRow = document.querySelector(`tr[data-rowid='${updatedProduct.id}']`);
+                const newRow = createProductRow(updatedProduct);
+                existingRow.parentNode.replaceChild(newRow, existingRow);
+            }
+        }
+
+        async function deleteProduct(id) {
+            const response = await fetch(`/api/products/${id}`, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+
+            if (response.ok) {
+                const deletedProduct = await response.json();
+                const deletedRow = document.querySelector(`tr[data-rowid='${deletedProduct.id}']`);
+                deletedRow.remove();
+            }
+        }
+
+        function createProductRow(product) {
+            const row = document.createElement("tr");
+            row.setAttribute("data-rowid", product.id);
+
+            const nameCell = document.createElement("td");
+            nameCell.textContent = product.name;
+            row.appendChild(nameCell);
+
+            const descriptionCell = document.createElement("td");
+            descriptionCell.textContent = product.description;
+            row.appendChild(descriptionCell);
+
+            const priceCell = document.createElement("td");
+            priceCell.textContent = product.price;
+            row.appendChild(priceCell);
+
+            const actionsCell = document.createElement("td");
+
+            const editButton = document.createElement("button");
+            editButton.textContent = "Редагувати";
+            editButton.addEventListener("click", () => getProduct(product.id));
+            actionsCell.appendChild(editButton);
+
+            const deleteButton = document.createElement("button");
+            deleteButton.textContent = "Видалити";
+            deleteButton.addEventListener("click", () => deleteProduct(product.id));
+            actionsCell.appendChild(deleteButton);
+
+            row.appendChild(actionsCell);
+
+            return row;
+        }
+
+        document.getElementById("resetBtn").addEventListener("click", () => {
+            document.getElementById("productId").value = "";
+            document.getElementById("productName").value = "";
+            document.getElementById("productDescription").value = "";
+            document.getElementById("productPrice").value = "";
+        });
+
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+            const productId = document.getElementById("productId").value;
+            const productName = document.getElementById("productName").value;
+            const productDescription = document.getElementById("productDescription").value;
+            const productPrice = parseFloat(document.getElementById("productPrice").value);
+
+            const productData = {
+                id: productId,
+                name: productName,
+                description: productDescription,
+                price: productPrice
+            };
+
+            if (productId === "") {
+                await createProduct(productData);
+            } else {
+                await updateProduct(productData);
+            }
+
+            document.getElementById("resetBtn").click();
+        });
+
+        getProducts();
+    </script>
+</body>
+</html>
